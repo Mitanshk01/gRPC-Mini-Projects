@@ -132,6 +132,15 @@ func (s *PlayerServer) RegisterMove(ctx context.Context, req *pb.MoveRequest) (*
     direction := req.Direction
     x, y := s.labyrinthServer.player.PositionX, s.labyrinthServer.player.PositionY
 
+    // If a player is victorious or is dead, no more moves will be allowed
+    if x == uint32(len(s.labyrinthServer.labyrinth[0]))-1 && y == uint32(len(s.labyrinthServer.labyrinth))-1 {
+        return &pb.MoveResponse{Result: pb.MoveResult_VICTORY}, nil
+    }
+
+    if s.labyrinthServer.player.Health == 0 {
+        return &pb.MoveResponse{Result: pb.MoveResult_PLAYER_DEAD}, nil
+    }
+
     switch direction {
     case "U":
         if y > 0 {
