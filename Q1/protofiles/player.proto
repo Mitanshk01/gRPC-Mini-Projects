@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package player;
+
+import "protofiles/common.proto";
+
+option go_package = "github.com/Mitanshk01/DS_HW4/Q1/protofiles";
+
+message PlayerStatusResponse {
+    uint32 score = 1;
+    uint32 health_points = 2;
+    common.Position position = 3;
+}
+
+enum MoveResult {
+    SUCCESS = 0;
+    FAILURE = 1;
+    PLAYER_DEAD = 2;
+    VICTORY = 3;
+}
+
+message MoveRequest {
+    string direction = 1; // 'U', 'L', 'R', 'D'
+}
+
+message MoveResponse {
+    MoveResult result = 1;
+}
+
+service PlayerService {
+    rpc GetPlayerStatus (common.EmptyMessage) returns (PlayerStatusResponse);
+    
+    rpc RegisterMove (MoveRequest) returns (MoveResponse);
+}

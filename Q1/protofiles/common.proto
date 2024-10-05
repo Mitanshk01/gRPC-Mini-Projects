@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package common;
+
+option go_package = "github.com/Mitanshk01/DS_HW4/Q1/protofiles";
+
+message Position {
+    uint32 position_x = 1;
+    uint32 position_y = 2;
+}
+
+message EmptyMessage {}

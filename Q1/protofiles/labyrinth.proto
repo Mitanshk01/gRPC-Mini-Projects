@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package labyrinth;
+
+import "protofiles/common.proto";
+
+option go_package = "github.com/Mitanshk01/DS_HW4/Q1/protofiles";
+
+message LabyrinthInfoResponse {
+    uint32 width = 1;
+    uint32 height = 2;
+}
+
+message BombardaRequest {
+    common.Position target_position = 1;
+}
+
+message RevelioRequest {
+    common.Position target_position = 1;
+    string tile_type = 2;  // 'C', 'W'
+}
+
+service LabyrinthService {
+    rpc GetLabyrinthInfo (common.EmptyMessage) returns (LabyrinthInfoResponse);
+    
+    rpc Revelio (RevelioRequest) returns (stream common.Position);
+    
+    rpc Bombarda (stream BombardaRequest) returns (common.EmptyMessage);
+}
