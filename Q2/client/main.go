@@ -6,6 +6,7 @@ import (
     "io"
     "log"
     "sort"
+    "sync"
     "time"
 
     "google.golang.org/grpc"
@@ -46,39 +47,55 @@ func main() {
 
     queryPoint := &knn.DataPoint{Coordinates: []float32{float32(queryX), float32(queryY)}}
     var allNeighbors []Neighbor
+    var mu sync.Mutex
+    var wg sync.WaitGroup
 
     for i := 0; i < numServers; i++ {
         port := basePort + i
-        conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), grpc.WithInsecure())
-        if err != nil {
-            log.Fatalf("did not connect to server %d: %v", port, err)
-        }
-        defer conn.Close()
+        wg.Add(1)
 
-        client := knn.NewKNNServiceClient(conn)
+        go func(port int) {
+            defer wg.Done()
 
-        ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-        defer cancel()
-
-        stream, err := client.FindKNearestNeighbors(ctx, &knn.KNNRequest{QueryPoint: queryPoint, K: int32(k)})
-        if err != nil {
-            log.Fatalf("could not call FindKNearestNeighbors on server %d: %v", port, err)
-        }
-
-        for {
-            neighbor, err := stream.Recv()
-            if err == io.EOF {
-                break
-            }
+            conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), grpc.WithInsecure())
             if err != nil {
-                log.Fatalf("error receiving neighbors from server %d: %v", port, err)
+                log.Printf("did not connect to server %d: %v", port, err)
+                return
             }
-            allNeighbors = append(allNeighbors, Neighbor{
-                Point:    neighbor.Point,
-                Distance: neighbor.Distance,
-            })
-        }
+            defer conn.Close()
+
+            client := knn.NewKNNServiceClient(conn)
+
+            ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+            defer cancel()
+
+            stream, err := client.FindKNearestNeighbors(ctx, &knn.KNNRequest{QueryPoint: queryPoint, K: int32(k)})
+            if err != nil {
+                log.Printf("could not call FindKNearestNeighbors on server %d: %v", port, err)
+                return
+            }
+
+            for {
+                neighbor, err := stream.Recv()
+                if err == io.EOF {
+                    break
+                }
+                if err != nil {
+                    log.Printf("error receiving neighbors from server %d: %v", port, err)
+                    return
+                }
+
+                mu.Lock()
+                allNeighbors = append(allNeighbors, Neighbor{
+                    Point:    neighbor.Point,
+                    Distance: neighbor.Distance,
+                })
+                mu.Unlock()
+            }
+        }(port)
     }
+
+    wg.Wait()
 
     sort.Sort(ByDistance(allNeighbors))
 
