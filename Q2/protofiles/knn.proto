@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package knn;
+
+option go_package = "github.com/Mitanshk01/DS_HW4/Q2/protofiles";
+
+message DataPoint {
+    repeated float coordinates = 1;
+}
+
+message Neighbor {
+    DataPoint point = 1;
+    float distance = 2;
+}
+
+message KNNRequest {
+    DataPoint query_point = 1;
+    int32 k = 2;
+}
+
+message KNNResponse {
+    repeated Neighbor neighbors = 1;
+}
+
+service KNNService {
+    rpc FindKNearestNeighbors(KNNRequest) returns (stream Neighbor);
+}
