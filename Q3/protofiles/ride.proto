@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package ride_sharing;
+
+option go_package = "github.com/Mitanshk01/DS_HW4/Q3/protofiles";
+
+message RideRequest {
+    string rider_id = 1;
+    string pickup_location = 2;
+    string destination = 3;
+}
+
+message AssignmentRequest {
+    string driver_id = 1;
+}
+
+// Ride response after rider request (no change)
+message RideResponse {
+    string ride_id = 1;
+    string driver_id = 2;
+    string status = 3; // e.g., "Assigned", "Pending", etc.
+}
+
+// Status-related messages (no change)
+message RideStatusRequest {
+    string ride_id = 1;
+}
+
+message RideStatusResponse {
+    string ride_id = 1;
+    string status = 2;
+}
+
+// Accept/reject ride (no change)
+message AcceptRideRequest {
+    string driver_id = 1;
+    string ride_id = 2;
+}
+
+message AcceptRideResponse {
+    string status = 1; // e.g., "Accepted", "Reassigned"
+}
+
+message RejectRideRequest {
+    string driver_id = 1;
+    string ride_id = 2;
+}
+
+message RejectRideResponse {
+    string status = 1; // e.g., "Rejected", "Reassigned"
+}
+
+message RideCompletionRequest {
+    string ride_id = 1;
+    string driver_id = 2;
+}
+
+message RideCompletionResponse {
+    string status = 1;
+}
+
+// Status checks for rider and driver (no change)
+message GetRiderStatusRequest {
+    string rider_id = 1;
+}
+
+message GetRiderStatusResponse {
+    string rider_id = 1;
+    string status = 2; // e.g., "Awaiting Ride", "In Ride", etc.
+}
+
+message GetDriverStatusRequest {
+    string driver_id = 1;
+}
+
+message GetDriverStatusResponse {
+    string driver_id = 1;
+    string status = 2; // e.g., "Available", "Assigned", "In Ride"
+}
+
+// Ride status updates (no change)
+message UpdateRideStatusRequest {
+    string ride_id = 1; // ID of the ride
+    string status = 2; // New status (e.g., "In Progress", "Cancelled")
+}
+
+message UpdateRideStatusResponse {
+    string ride_id = 1; // ID of the ride
+    string status = 2; // Updated status
+}
+
+message AssignmentResponse {
+    string ride_id = 1;
+    string rider_id = 2;
+    string pickup_location = 3;
+    string destination = 4;
+}
+
+service RiderService {
+    rpc RequestRide(RideRequest) returns (RideResponse);
+    rpc GetRideStatus(RideStatusRequest) returns (RideStatusResponse);
+    rpc GetRiderStatus(GetRiderStatusRequest) returns (GetRiderStatusResponse);
+}
+
+// Need a Basic Database for retreiving statuses
+service DriverService {
+    rpc AcceptRide(AcceptRideRequest) returns (AcceptRideResponse);
+    rpc RejectRide(RejectRideRequest) returns (RejectRideResponse);
+    rpc CompleteRide(RideCompletionRequest) returns (RideCompletionResponse);
+
+    rpc GetRideRequest(AssignmentRequest) returns (stream AssignmentResponse);
+    
+    rpc UpdateRideStatus(UpdateRideStatusRequest) returns (UpdateRideStatusResponse);
+}
