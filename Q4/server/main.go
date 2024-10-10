@@ -139,7 +139,7 @@ func main() {
         log.Fatalf("Error: Port %s is already in use or unavailable.", *port)
     }
 
-    logFile, err := os.OpenFile("../logs/server_logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+    logFile, err := os.OpenFile("./logs/server_logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
     if err != nil {
         log.Fatalf("Error opening log file: %v", err)
     }
