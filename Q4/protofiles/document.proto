@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package collaborative_document;
+
+option go_package = "github.com/Mitanshk01/DS_HW4/Q4/protofiles";
+
+message DocumentChange {
+    string client_id = 1;
+    string content = 2;
+    int32 position = 3;
+    string change_type = 4;
+    string timestamp = 5;
+}
+
+service CollaborativeDocumentService {
+    rpc SyncDocumentChanges (stream DocumentChange) returns (stream DocumentChange);
+}
