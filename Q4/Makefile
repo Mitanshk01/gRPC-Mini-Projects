@@ -1,6 +1,7 @@
 PROTO_DIR = protofiles
 CLIENT_DIR = client
 SERVER_DIR = server
+LOGS_DIR = logs
 
 PROTO_FILE = $(PROTO_DIR)/document.proto
 PROTO_OUT_DIR = .
@@ -21,6 +22,9 @@ proto:
 
 server:
 	go run $(SERVER_DIR)/main.go --port=$(SERVER_PORT)
+
+logger:
+	go run $(LOGS_DIR)/logger.go --port=$(SERVER_PORT)
 
 client1:
 	go run $(CLIENT_DIR)/main.go --port=$(CLIENT1_PORT)

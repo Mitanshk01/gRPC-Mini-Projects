@@ -12,6 +12,10 @@ message DocumentChange {
     string timestamp = 5;
 }
 
+message EmptyMessage {}
+
 service CollaborativeDocumentService {
     rpc SyncDocumentChanges (stream DocumentChange) returns (stream DocumentChange);
+
+    rpc StreamDocumentLogs (EmptyMessage) returns (stream DocumentChange);
 }

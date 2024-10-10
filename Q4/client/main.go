@@ -319,7 +319,7 @@ func renderHTML(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	port := flag.String("port", "8080", "Port to serve the web application on")
+	port := flag.String("port", "", "Port to connect to the server (e.g., 50051)")
 	flag.Parse()
 
 	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
@@ -327,6 +327,7 @@ func main() {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
 	defer conn.Close()
+	log.Println("Client ID:", clientID)
 
 	client := pb.NewCollaborativeDocumentServiceClient(conn)
 
