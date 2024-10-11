@@ -9,12 +9,15 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
 	"go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	// "google.golang.org/grpc/health/grpc_health_v1"
+    // "google.golang.org/grpc/health"
 	pb "github.com/Mitanshk01/DS_HW4/Q3/protofiles"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -56,14 +59,15 @@ func (s *rideSharingServer) RequestRide(ctx context.Context, req *pb.RideRequest
 	driverID, err := s.assignDriver(rideID, req.RiderId, req.PickupLocation, req.Destination)
 	if err != nil {
 		fmt.Println(err)
-		return &pb.RideResponse{Status: "No drivers available"}, nil
+		s.rideStatusStore[rideID] = "Cancelled"
+		return &pb.RideResponse{Status: "No Drivers Available"}, nil
 	}
 
 	s.mu.Lock()
-	s.rideStatusStore[rideID] = "Assigned"
+	s.rideStatusStore[rideID] = "Ongoing"
 	s.mu.Unlock()
 
-	return &pb.RideResponse{RideId: rideID, DriverId: driverID, Status: "Assigned"}, nil
+	return &pb.RideResponse{RideId: rideID, DriverId: driverID, Status: "Ongoing"}, nil
 }
 
 
@@ -152,6 +156,8 @@ func (s *rideSharingServer) assignDriver(rideID, riderID, pickupLocation, destin
 
             }
         }
+		log.Printf("No drivers available currently, trying again...\n")
+		time.Sleep(3 * time.Second)
     }
 
     return "", fmt.Errorf("no available drivers after multiple attempts")
@@ -244,32 +250,42 @@ func isPortAvailable(port string) bool {
 }
 
 func authorizationInterceptor() grpc.UnaryServerInterceptor {
-	return func(
-		ctx context.Context,
-		req interface{},
-		info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler,
-	) (interface{}, error) {
-		if _, ok := metadata.FromIncomingContext(ctx); ok {
-			peerInfo, _ := peer.FromContext(ctx)
-			if tlsInfo, ok := peerInfo.AuthInfo.(credentials.TLSInfo); ok {
-				cert := tlsInfo.State.PeerCertificates[0]
+    return func(
+        ctx context.Context,
+        req interface{},
+        info *grpc.UnaryServerInfo,
+        handler grpc.UnaryHandler,
+    ) (interface{}, error) {
+        if _, ok := metadata.FromIncomingContext(ctx); ok {
+            peerInfo, _ := peer.FromContext(ctx)
+            if tlsInfo, ok := peerInfo.AuthInfo.(credentials.TLSInfo); ok {
+                cert := tlsInfo.State.PeerCertificates[0]
 
-				clientType := cert.Subject.CommonName
+				if time.Now().After(cert.NotAfter) {
+                    return nil, status.Error(codes.Unauthenticated, "certificate expired")
+                }
 
-				switch clientType {
-				case "driver.rideshare.com":
-					return handler(ctx, req)
-				case "rider.rideshare.com":
-					return handler(ctx, req)
-				}
+                clientType := cert.Subject.CommonName
 
-				return nil, status.Errorf(codes.PermissionDenied, "unauthorized client type: %s", clientType)
-			}
-		}
+                method := info.FullMethod
+                if strings.Contains(method, "DriverService") {
+                    if clientType != "driver.rideshare.com" {
+                        return nil, status.Errorf(codes.PermissionDenied, "unauthorized access for client type: %s", clientType)
+                    }
+                } else if strings.Contains(method, "RiderService") {
+                    if clientType != "rider.rideshare.com" {
+                        return nil, status.Errorf(codes.PermissionDenied, "unauthorized access for client type: %s", clientType)
+                    }
+                } else {
+                    return nil, status.Error(codes.PermissionDenied, "invalid service")
+                }
 
-		return nil, status.Error(codes.Unauthenticated, "missing or invalid credentials")
-	}
+                return handler(ctx, req)
+            }
+        }
+
+        return nil, status.Error(codes.Unauthenticated, "missing or invalid credentials")
+    }
 }
 
 func LoggingInterceptor() grpc.UnaryServerInterceptor {
@@ -404,8 +420,13 @@ func main() {
 
 	server := grpc.NewServer(
 		grpc.Creds(tlsCreds),
-		grpc.UnaryInterceptor(combinedInterceptor()), 
+		grpc.UnaryInterceptor(combinedInterceptor()),
 	)
+
+	// healthServer := health.NewServer()
+	// grpc_health_v1.RegisterHealthServer(server, healthServer)
+
+	// healthServer.SetServingStatus("RiderService", grpc_health_v1.HealthCheckResponse_SERVING)
 
 	rideServer := NewRideSharingServer()
 	pb.RegisterRiderServiceServer(server, rideServer)

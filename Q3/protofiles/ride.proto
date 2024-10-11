@@ -14,14 +14,12 @@ message AssignmentRequest {
     string driver_id = 1;
 }
 
-// Ride response after rider request (no change)
 message RideResponse {
     string ride_id = 1;
     string driver_id = 2;
     string status = 3; // e.g., "Assigned", "Pending", etc.
 }
 
-// Status-related messages (no change)
 message RideStatusRequest {
     string ride_id = 1;
 }
@@ -78,7 +76,6 @@ message GetDriverStatusResponse {
     string status = 2; // e.g., "Available", "Assigned", "In Ride"
 }
 
-// Ride status updates (no change)
 message UpdateRideStatusRequest {
     string ride_id = 1; // ID of the ride
     string status = 2; // New status (e.g., "In Progress", "Cancelled")
@@ -102,7 +99,6 @@ service RiderService {
     rpc GetRiderStatus(GetRiderStatusRequest) returns (GetRiderStatusResponse);
 }
 
-// Need a Basic Database for retreiving statuses
 service DriverService {
     rpc AcceptRide(AcceptRideRequest) returns (AcceptRideResponse);
     rpc RejectRide(RejectRideRequest) returns (RejectRideResponse);

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -18,18 +17,14 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/resolver/manual"
 	pb "github.com/Mitanshk01/DS_HW4/Q3/protofiles"
 )
 
 var rideInProgress bool = false
 var currentRideID string = ""
 var riderID string
-var currentServer string
-
-type LoadBalancer struct {
-	servers []string
-	index   int
-}
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	clientCert, err := tls.LoadX509KeyPair("../certificate/rider-cert.pem", "../certificate/rider-key.pem")
@@ -48,6 +43,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{clientCert},
 		RootCAs:      caCertPool,
+		ServerName:   "localhost", 
 	}
 
 	return credentials.NewTLS(tlsConfig), nil
@@ -55,55 +51,32 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 
 func discoverServers() []string {
 	etcdAddress := flag.String("etcd", "http://localhost:2379", "etcd server address")
-    flag.Parse()
+	flag.Parse()
 
 	etcdClient, err := clientv3.New(clientv3.Config{
-        Endpoints: []string{*etcdAddress},
-        DialTimeout: 5 * time.Second,
-    })
+		Endpoints:   []string{*etcdAddress},
+		DialTimeout: 5 * time.Second,
+	})
 
-    var servers []string
-
-    resp, err := etcdClient.Get(context.Background(), "/ride-sharing/servers", clientv3.WithPrefix())
-
-    if err != nil {
-        log.Fatalf("Error retrieving servers from etcd: %v\n", err)
-    }
-
-    for _, kv := range resp.Kvs {
-        servers = append(servers, string(kv.Value))
-    }
-
-    return servers
-}
-
-func NewLoadBalancer(servers []string) *LoadBalancer {
-	return &LoadBalancer{
-		servers: servers,
-		index:   0,
-	}
-}
-
-func (lb *LoadBalancer) PickFirst() string {
-	return lb.servers[0]
-}
-
-func (lb *LoadBalancer) RoundRobin() string {
-	server := lb.servers[lb.index]
-	lb.index = (lb.index + 1) % len(lb.servers)
-	return server
-}
-
-func isPortAvailable(port string) bool {
-	ln, err := net.Listen("tcp", ":"+port)
 	if err != nil {
-		return false
+		log.Fatalf("Failed to connect to etcd: %v", err)
 	}
-	ln.Close()
-	return true
+	defer etcdClient.Close()
+
+	resp, err := etcdClient.Get(context.Background(), "/ride-sharing/servers", clientv3.WithPrefix())
+	if err != nil {
+		log.Fatalf("Error retrieving servers from etcd: %v", err)
+	}
+
+	var servers []string
+	for _, kv := range resp.Kvs {
+		servers = append(servers, fmt.Sprintf("localhost:%s", string(kv.Value)))
+	}	
+
+	return servers
 }
 
-func riderCLI(client pb.RiderServiceClient, lb *LoadBalancer) {
+func riderCLI(client pb.RiderServiceClient) {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -121,7 +94,7 @@ func riderCLI(client pb.RiderServiceClient, lb *LoadBalancer) {
 			if rideInProgress {
 				fmt.Println("Error: You already have an active ride. Complete the ride before requesting a new one.")
 			} else {
-				requestRide(client, lb)
+				requestRide(client)
 			}
 		case "status":
 			if rideInProgress {
@@ -142,7 +115,7 @@ func riderCLI(client pb.RiderServiceClient, lb *LoadBalancer) {
 	}
 }
 
-func requestRide(client pb.RiderServiceClient, lb *LoadBalancer) {
+func requestRide(client pb.RiderServiceClient) {
 	fmt.Print("Enter Pickup Location: ")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
@@ -153,26 +126,10 @@ func requestRide(client pb.RiderServiceClient, lb *LoadBalancer) {
 	destination := strings.TrimSpace(scanner.Text())
 
 	req := &pb.RideRequest{
-		RiderId:     riderID,
-		PickupLocation:      pickup,
-		Destination: destination,
+		RiderId:         riderID,
+		PickupLocation:  pickup,
+		Destination:     destination,
 	}
-
-	selectedServer := fmt.Sprintf("127.0.0.1:%s", lb.RoundRobin())
-
-	tlsCredentials, err := loadTLSCredentials()
-
-	if err != nil {
-		log.Fatal("cannot load TLS credentials: ", err)
-	}
-
-	conn, err := grpc.Dial(selectedServer, grpc.WithTransportCredentials(tlsCredentials))
-	if err != nil {
-		log.Fatalf("Failed to connect to server %s: %v", selectedServer, err)
-	}
-	defer conn.Close()
-
-	client = pb.NewRiderServiceClient(conn)
 
 	fmt.Println("Ride Requested")
 	res, err := client.RequestRide(context.Background(), req)
@@ -180,12 +137,9 @@ func requestRide(client pb.RiderServiceClient, lb *LoadBalancer) {
 		log.Fatalf("Failed to request ride: %v", err)
 	}
 
-	fmt.Println("%s", res.Status)
-
-	if res.Status == "Assigned" {
+	if res.Status == "Ongoing" {
 		rideInProgress = true
 		currentRideID = res.RideId
-		currentServer = selectedServer
 		fmt.Printf("Ride requested. Ride ID: %s. Driver ID: %s assigned.\n", res.RideId, res.DriverId)
 	} else {
 		fmt.Printf("Ride request failed: %s\n", res.Status)
@@ -196,20 +150,6 @@ func checkRideStatus(client pb.RiderServiceClient) {
 	req := &pb.RideStatusRequest{
 		RideId: currentRideID,
 	}
-
-	tlsCredentials, err := loadTLSCredentials()
-
-	if err != nil {
-		log.Fatal("cannot load TLS credentials: ", err)
-	}
-
-	conn, err := grpc.Dial(currentServer, grpc.WithTransportCredentials(tlsCredentials))
-	if err != nil {
-		log.Fatalf("Failed to connect to server %s: %v", currentServer, err)
-	}
-	defer conn.Close()
-
-	client = pb.NewRiderServiceClient(conn)
 
 	res, err := client.GetRideStatus(context.Background(), req)
 	if err != nil {
@@ -222,39 +162,49 @@ func checkRideStatus(client pb.RiderServiceClient) {
 		rideInProgress = false
 		fmt.Println("The ride has been completed by the driver.")
 		currentRideID = ""
-		currentServer = ""
 	}
 }
 
 func main() {
-	port := flag.String("port", "", "Port to connect to the server (e.g., 50051)")
+	policy := flag.String("policy", "round_robin", "Load balancing policy: 'pick_first' or 'round_robin'")
 	flag.Parse()
 
-	if *port == "" {
-		log.Fatal("Error: Port number is required. Please provide it using the --port flag.")
-	}
-
-	if !isPortAvailable(*port) {
-		log.Fatalf("Error: Port %s is already in use or unavailable.", *port)
-	}
-
 	servers := discoverServers()
+	fmt.Printf("Discovered servers: %v\n", servers)
 
-	fmt.Printf("Servers: %v\n", servers)
-
-	lb := NewLoadBalancer(servers)
-
-	serverAddress := fmt.Sprintf("127.0.0.1:%s", *port)
-	
 	tlsCredentials, err := loadTLSCredentials()
-
 	if err != nil {
-		log.Fatal("cannot load TLS credentials: ", err)
+		log.Fatal("Cannot load TLS credentials: ", err)
 	}
 
-	conn, err := grpc.Dial(serverAddress, grpc.WithTransportCredentials(tlsCredentials))
+	r := manual.NewBuilderWithScheme("myservice")
+	var addresses []resolver.Address
+	for _, server := range servers {
+		addresses = append(addresses, resolver.Address{Addr: server})
+	}
+	r.InitialState(resolver.State{Addresses: addresses})
+
+	dialOpts := []grpc.DialOption{
+		grpc.WithTransportCredentials(tlsCredentials),
+		grpc.WithResolvers(r),
+		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{
+			"loadBalancingPolicy": "%s",
+			"methodConfig": [{
+				"name": [{"service": ""}],
+				"retryPolicy": {
+					"MaxAttempts": 5,
+					"InitialBackoff": "0.1s",
+					"MaxBackoff": "1s",
+					"BackoffMultiplier": 2.0,
+					"RetryableStatusCodes": ["UNAVAILABLE"]
+				}
+			}] 
+		}`, *policy)),
+	}
+
+	conn, err := grpc.Dial("myservice:///", dialOpts...)
 	if err != nil {
-		log.Fatalf("failed to connect: %v", err)
+		log.Fatalf("Failed to connect: %v", err)
 	}
 	defer conn.Close()
 
@@ -263,5 +213,5 @@ func main() {
 	riderID = uuid.New().String()
 	fmt.Printf("Your unique Rider ID: %s\n", riderID)
 
-	riderCLI(client, lb)
+	riderCLI(client)
 }

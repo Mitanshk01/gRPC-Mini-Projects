@@ -9,7 +9,6 @@ import (
     "fmt"
     "io/ioutil"
     "log"
-    "net"
     "os"
     "strings"
     "sync"
@@ -44,15 +43,6 @@ func discoverServers(etcdClient *clientv3.Client) []string {
     }
 
     return servers
-}
-
-func isPortAvailable(port string) bool {
-    ln, err := net.Listen("tcp", ":"+port)
-    if err != nil {
-        return false
-    }
-    ln.Close()
-    return true
 }
 
 func handleRideRequests(client pb.DriverServiceClient, wg *sync.WaitGroup) {
@@ -240,17 +230,8 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 }
 
 func main() {
-	port := flag.String("port", "", "Port to connect to the server (e.g., 50051)")
 	etcdURL := flag.String("etcd", "localhost:2379", "Etcd server URL")
 	flag.Parse()
-
-	if *port == "" {
-		log.Fatal("Error: Port number is required. Please provide it using the --port flag.")
-	}
-
-	if !isPortAvailable(*port) {
-		log.Fatalf("Error: Port %s is already in use or unavailable.", *port)
-	}
 
 	etcdClient, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{*etcdURL},
