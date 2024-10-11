@@ -5,6 +5,7 @@ import (
     "context"
     "flag"
     "fmt"
+    "io"
     "log"
     "os"
     "strings"
@@ -21,7 +22,7 @@ func displayCommands() {
     fmt.Println("2. player_status - Get player score, health, and position")
     fmt.Println("3. move [DIRECTION] - Move the player (DIRECTION: U, D, L, R)")
     fmt.Println("4. revelio [X] [Y] [TileType] - Use Revelio spell at given position and tile type")
-    fmt.Println("5. bombarda [X] [Y] - Use Bombarda spell at given position")
+    fmt.Println("5. bombarda [X1] [Y1] [X2] [Y2] [X3] [Y3] - Use Bombarda spell at the 3 given positions")
     fmt.Println("6. exit - Exit the game")
 }
 
@@ -87,14 +88,18 @@ func useRevelio(client pb.LabyrinthServiceClient, x, y uint32, tileType string) 
     fmt.Println("Revelio results:")
     for {
         position, err := stream.Recv()
+        if err == io.EOF {
+            break
+        }
         if err != nil {
+            fmt.Printf("Revelio failed: %v", err)
             break
         }
         fmt.Printf("Tile found at position (%d, %d)\n", position.PositionX, position.PositionY)
     }
 }
 
-func useBombarda(client pb.LabyrinthServiceClient, x, y uint32) {
+func useBombarda(client pb.LabyrinthServiceClient, positions [][2]uint32) {
     ctx, cancel := context.WithTimeout(context.Background(), time.Second)
     defer cancel()
 
@@ -103,16 +108,28 @@ func useBombarda(client pb.LabyrinthServiceClient, x, y uint32) {
         log.Fatalf("Could not start Bombarda: %v", err)
     }
 
-    bombardaRequest := &pb.BombardaRequest{
-        TargetPosition: &pb.Position{PositionX: x, PositionY: y},
+    points := []*pb.BombardaRequest{
+        {TargetPosition: &pb.Position{PositionX: 1, PositionY: 1}},
+        {TargetPosition: &pb.Position{PositionX: 2, PositionY: 2}},
+        {TargetPosition: &pb.Position{PositionX: 3, PositionY: 3}},
     }
 
-    if err := bombardaStream.Send(bombardaRequest); err != nil {
-        log.Fatalf("Bombarda send error: %v", err)
+    for _, req := range points {
+        if err := bombardaStream.Send(req); err != nil {
+            log.Fatalf("Failed to send BombardaRequest: %v", err)
+        }
     }
 
-    fmt.Printf("Bombarda spell cast at position (%d, %d)!\n", x, y)
-    bombardaStream.CloseSend()
+    if err := bombardaStream.CloseSend(); err != nil {
+        log.Fatalf("Failed to close Bombarda stream: %v", err)
+    }
+
+    _, err = bombardaStream.CloseAndRecv()
+    if err != nil {
+        log.Fatalf("Failed to receive Bombarda response: %v", err)
+    }
+
+    log.Println("Bombarda action completed successfully")
 }
 
 func main() {
@@ -173,13 +190,16 @@ func main() {
             useRevelio(labyrinthClient, x, y, tileType)
 
         case "bombarda":
-            if len(parts) < 3 {
-                fmt.Println("Usage: bombarda [X] [Y]")
+            if len(parts) < 7 {
+                fmt.Println("Usage: bombarda [X1] [Y1] [X2] [Y2] [X3] [Y3]")
                 continue
             }
-            x := parseToUInt32(parts[1])
-            y := parseToUInt32(parts[2])
-            useBombarda(labyrinthClient, x, y)
+            positions := [][2]uint32{
+                {parseToUInt32(parts[1]), parseToUInt32(parts[2])},
+                {parseToUInt32(parts[3]), parseToUInt32(parts[4])},
+                {parseToUInt32(parts[5]), parseToUInt32(parts[6])},
+            }
+            useBombarda(labyrinthClient, positions)        
 
         case "exit":
             fmt.Println("Exiting the game...")

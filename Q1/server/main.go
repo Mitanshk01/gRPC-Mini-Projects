@@ -3,6 +3,8 @@ package main
 import (
     "bufio"
     "context"
+    "errors"
+    "flag"
     "log"
     "net"
     "os"
@@ -33,6 +35,15 @@ type Player struct {
     Health            uint32
     Score             uint32
     Spells            uint32
+}
+
+func isPortAvailable(port string) bool {
+    ln, err := net.Listen("tcp", ":"+port)
+    if err != nil {
+        return false
+    }
+    ln.Close()
+    return true
 }
 
 func initializeLabyrinthFromFile(filePath string) [][]Tile {
@@ -82,31 +93,109 @@ func (s *LabyrinthServer) GetLabyrinthInfo(ctx context.Context, req *pb.EmptyMes
 }
 
 func (s *LabyrinthServer) Revelio(req *pb.RevelioRequest, stream pb.LabyrinthService_RevelioServer) error {
+    if s.player.Spells <= 0 {
+        return errors.New("No spells remaining")
+    }
+
+    // log.Printf("Current spells: %d", s.player.Spells)
+
     targetX, targetY := req.TargetPosition.PositionX, req.TargetPosition.PositionY
-    for y, row := range s.labyrinth {
-        for x, tile := range row {
-            if (tile.Type == req.TileType || req.TileType == "") && uint32(x) == targetX && uint32(y) == targetY {
-                stream.Send(&pb.Position{
-                    PositionX: uint32(x),
-                    PositionY: uint32(y),
-                })
+    
+    if targetX >= uint32(len(s.labyrinth[0])) || targetY >= uint32(len(s.labyrinth)) {
+        return errors.New("Invalid target position")
+    }
+
+    startX := int(targetX) - 1
+    startY := int(targetY) - 1
+    endX := int(targetX) + 1
+    endY := int(targetY) + 1
+
+    if startX < 0 {
+        startX = 0
+    }
+    if startY < 0 {
+        startY = 0
+    }
+    if endX >= len(s.labyrinth[0]) {
+        endX = len(s.labyrinth[0]) - 1
+    }
+    if endY >= len(s.labyrinth) {
+        endY = len(s.labyrinth) - 1
+    }
+
+    for y := startY; y <= endY; y++ {
+        for x := startX; x <= endX; x++ {
+            if x >= 0 && x < len(s.labyrinth[0]) && y >= 0 && y < len(s.labyrinth) {
+                tile := s.labyrinth[y][x]
+                if tile.Type == req.TileType || req.TileType == "" {
+                    if err := stream.Send(&pb.Position{
+                        PositionX: uint32(x),
+                        PositionY: uint32(y),
+                    }); err != nil {
+                        return err
+                    }
+                }
             }
         }
     }
+
+    s.player.Spells--
     return nil
 }
 
 func (s *LabyrinthServer) Bombarda(stream pb.LabyrinthService_BombardaServer) error {
+    if s.player.Spells <= 0 {
+        return errors.New("No spells remaining")
+    }
+
+    var requests []*pb.BombardaRequest
     for {
         req, err := stream.Recv()
         if err != nil {
-            return err
+            if len(requests) != 3 {
+                return errors.New("Invalid number of points received, expected exactly 3")
+            }
+            break
         }
+
+        if req.TargetPosition.PositionX >= uint32(len(s.labyrinth[0])) || 
+           req.TargetPosition.PositionY >= uint32(len(s.labyrinth)) {
+            return errors.New("Invalid target position")
+        }
+
+        requests = append(requests, req)
+    }
+
+    for _, req := range requests {
         x, y := req.TargetPosition.PositionX, req.TargetPosition.PositionY
-        if x < uint32(len(s.labyrinth[0])) && y < uint32(len(s.labyrinth)) {
-            s.labyrinth[y][x] = Tile{Type: "EMPTY"}
+
+        startX := int(x) - 1
+        startY := int(y) - 1
+        endX := int(x) + 1
+        endY := int(y) + 1
+
+        if startX < 0 {
+            startX = 0
+        }
+        if startY < 0 {
+            startY = 0
+        }
+        if endX >= len(s.labyrinth[0]) {
+            endX = len(s.labyrinth[0]) - 1
+        }
+        if endY >= len(s.labyrinth) {
+            endY = len(s.labyrinth) - 1
+        }
+
+        for j := startY; j <= endY; j++ {
+            for i := startX; i <= endX; i++ {
+                s.labyrinth[j][i] = Tile{Type: "EMPTY"}
+            }
         }
     }
+
+    s.player.Spells--
+    return stream.SendAndClose(&pb.EmptyMessage{})
 }
 
 func (s *PlayerServer) GetPlayerStatus(ctx context.Context, req *pb.EmptyMessage) (*pb.PlayerStatusResponse, error) {
@@ -132,7 +221,6 @@ func (s *PlayerServer) RegisterMove(ctx context.Context, req *pb.MoveRequest) (*
     direction := req.Direction
     x, y := s.labyrinthServer.player.PositionX, s.labyrinthServer.player.PositionY
 
-    // If a player is victorious or is dead, no more moves will be allowed
     if x == uint32(len(s.labyrinthServer.labyrinth[0]))-1 && y == uint32(len(s.labyrinthServer.labyrinth))-1 {
         return &pb.MoveResponse{Result: pb.MoveResult_VICTORY}, nil
     }
@@ -146,25 +234,25 @@ func (s *PlayerServer) RegisterMove(ctx context.Context, req *pb.MoveRequest) (*
         if y > 0 {
             y--
         } else {
-            handleWallCollision(s)
+            return handleWallCollision(s)
         }
     case "D":
         if y < uint32(len(s.labyrinthServer.labyrinth))-1 {
             y++
         } else {
-            handleWallCollision(s)
+            return handleWallCollision(s)
         }
     case "L":
         if x > 0 {
             x--
         } else {
-            handleWallCollision(s)
+            return handleWallCollision(s)
         }
     case "R":
         if x < uint32(len(s.labyrinthServer.labyrinth[0]))-1 {
             x++
         } else {
-            handleWallCollision(s)
+            return handleWallCollision(s)
         }
     default:
         return &pb.MoveResponse{Result: pb.MoveResult_FAILURE}, nil
@@ -172,7 +260,7 @@ func (s *PlayerServer) RegisterMove(ctx context.Context, req *pb.MoveRequest) (*
 
     tile := s.labyrinthServer.labyrinth[y][x]
     if tile.Type == "WALL" {
-        handleWallCollision(s)
+        return handleWallCollision(s)
     } else if tile.Type == "COIN" {
         s.labyrinthServer.player.Score++
         s.labyrinthServer.labyrinth[y][x] = Tile{Type: "EMPTY"}
@@ -189,12 +277,23 @@ func (s *PlayerServer) RegisterMove(ctx context.Context, req *pb.MoveRequest) (*
 }
 
 func main() {
+    port := flag.String("port", "", "Port to connect to the server (e.g., 50051)")
+	flag.Parse()
+
+	if *port == "" {
+        log.Fatal("Error: Port number is required. Please provide it using the --port flag.")
+    }
+
+    if !isPortAvailable(*port) {
+        log.Fatalf("Error: Port %s is already in use or unavailable.", *port)
+    }
+
     listener, err := net.Listen("tcp", ":50051")
     if err != nil {
         log.Fatalf("Failed to listen: %v", err)
     }
 
-    labyrinthFilePath := "labyrinth.txt"
+    labyrinthFilePath := "./server/labyrinth.txt"
     labyrinth := initializeLabyrinthFromFile(labyrinthFilePath)
 
     labyrinthServer := &LabyrinthServer{
