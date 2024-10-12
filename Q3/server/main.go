@@ -16,8 +16,6 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	// "google.golang.org/grpc/health/grpc_health_v1"
-    // "google.golang.org/grpc/health"
 	pb "github.com/Mitanshk01/DS_HW4/Q3/protofiles"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -29,22 +27,18 @@ import (
 type rideSharingServer struct {
 	pb.UnimplementedRiderServiceServer
 	pb.UnimplementedDriverServiceServer
-	mu              sync.Mutex
-	ch              sync.Mutex
-	driverStatus    map[string]bool
-	driverStreams   map[string]pb.DriverService_GetRideRequestServer
-	rideStatusStore map[string]string
-	rideAssignmentStatus map[string]string
-	maxRetries      int
+	mu                   sync.Mutex
+	ch                   sync.Mutex
+	driverStreams        map[string]pb.DriverService_GetRideRequestServer
+	maxRetries           int
+	etcdClient           *clientv3.Client
 }
 
-func NewRideSharingServer() *rideSharingServer {
+func NewRideSharingServer(etcdClient *clientv3.Client) *rideSharingServer {
 	return &rideSharingServer{
-		driverStatus:    make(map[string]bool), // Initialize with no drivers
-		driverStreams:   make(map[string]pb.DriverService_GetRideRequestServer), // Store streams
-		rideStatusStore: make(map[string]string),
-		rideAssignmentStatus: make(map[string]string),
-		maxRetries:      3,
+		driverStreams:        make(map[string]pb.DriverService_GetRideRequestServer),
+		maxRetries:           3,
+		etcdClient:           etcdClient,
 	}
 }
 
@@ -52,154 +46,263 @@ func createAssignmentKey(rideID string, driverID string) string {
 	return rideID + "_" + driverID
 }
 
+func (s *rideSharingServer) setRideStatus(rideID, status string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := s.etcdClient.Put(ctx, fmt.Sprintf("/ride-sharing/ride-status/%s", rideID), status)
+	return err
+}
+
+func (s *rideSharingServer) getRideStatus(rideID string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	resp, err := s.etcdClient.Get(ctx, fmt.Sprintf("/ride-sharing/ride-status/%s", rideID))
+	if err != nil {
+		return "", err
+	}
+	if len(resp.Kvs) == 0 {
+		return "", fmt.Errorf("ride not found")
+	}
+	return string(resp.Kvs[0].Value), nil
+}
+
+func (s *rideSharingServer) setRideAssignmentStatus(rideID, driverID, status string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	key := fmt.Sprintf("/ride-sharing/ride-assignment/%s_%s", rideID, driverID)
+	_, err := s.etcdClient.Put(ctx, key, status)
+	return err
+}
+
+func (s *rideSharingServer) getRideAssignmentStatus(rideID, driverID string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	key := fmt.Sprintf("/ride-sharing/ride-assignment/%s_%s", rideID, driverID)
+	resp, err := s.etcdClient.Get(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	if len(resp.Kvs) == 0 {
+		return "", fmt.Errorf("assignment not found")
+	}
+	return string(resp.Kvs[0].Value), nil
+}
+
+func (s *rideSharingServer) setDriverStatus(driverID string, available bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	status := "unavailable"
+	if available {
+		status = "available"
+	}
+
+	_, err := s.etcdClient.Put(ctx, "/ride-sharing/drivers/"+driverID, status)
+	return err
+}
+
+func (s *rideSharingServer) getDriverStatus(driverID string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := s.etcdClient.Get(ctx, "/ride-sharing/drivers/"+driverID)
+	if err != nil {
+		return false, err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return false, nil
+	}
+
+	return string(resp.Kvs[0].Value) == "available", nil
+}
+
+func (s *rideSharingServer) getAvailableDrivers() ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := s.etcdClient.Get(ctx, "/ride-sharing/drivers/", clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	var availableDrivers []string
+	for _, kv := range resp.Kvs {
+		if string(kv.Value) == "available" {
+			driverID := strings.TrimPrefix(string(kv.Key), "/ride-sharing/drivers/")
+			availableDrivers = append(availableDrivers, driverID)
+		}
+	}
+
+	return availableDrivers, nil
+}
+
 func (s *rideSharingServer) RequestRide(ctx context.Context, req *pb.RideRequest) (*pb.RideResponse, error) {
 	rideID := uuid.New().String()
 
-	fmt.Println("Request Arrived %s", rideID)
+	fmt.Printf("Request Arrived %s\n", rideID)
 	driverID, err := s.assignDriver(rideID, req.RiderId, req.PickupLocation, req.Destination)
 	if err != nil {
 		fmt.Println(err)
-		s.rideStatusStore[rideID] = "Cancelled"
+		if err := s.setRideStatus(rideID, "Cancelled"); err != nil {
+			log.Printf("Failed to set ride status: %v", err)
+		}
 		return &pb.RideResponse{Status: "No Drivers Available"}, nil
 	}
 
-	s.mu.Lock()
-	s.rideStatusStore[rideID] = "Ongoing"
-	s.mu.Unlock()
+	if err := s.setRideStatus(rideID, "Ongoing"); err != nil {
+		log.Printf("Failed to set ride status: %v", err)
+	}
 
 	return &pb.RideResponse{RideId: rideID, DriverId: driverID, Status: "Ongoing"}, nil
 }
 
-
-
 func (s *rideSharingServer) GetRideRequest(req *pb.AssignmentRequest, stream pb.DriverService_GetRideRequestServer) error {
+	fmt.Printf("Driver arrived with id: %s\n", req.DriverId)
+	
+	if err := s.setDriverStatus(req.DriverId, true); err != nil {
+		log.Printf("Failed to set driver status: %v", err)
+		return err
+	}
+
 	s.mu.Lock()
-	fmt.Println("Driver arrived with id: %s", req.DriverId)
-	s.driverStatus[req.DriverId] = true
 	s.driverStreams[req.DriverId] = stream
 	s.mu.Unlock()
 
 	<-stream.Context().Done()
 
-	fmt.Println("Deleting driver")
+	fmt.Println("Driver disconnected:", req.DriverId)
 	s.mu.Lock()
 	delete(s.driverStreams, req.DriverId)
-	s.driverStatus[req.DriverId] = false
 	s.mu.Unlock()
+
+	if err := s.setDriverStatus(req.DriverId, false); err != nil {
+		log.Printf("Failed to update driver status on disconnect: %v", err)
+	}
 
 	return nil
 }
 
-
-func (s *rideSharingServer) updateAssignmentStatus(assignmentKey, status string) {
-    s.ch.Lock()
-    s.rideAssignmentStatus[assignmentKey] = status
-    s.ch.Unlock()
-}
-
-
 func (s *rideSharingServer) assignDriver(rideID, riderID, pickupLocation, destination string) (string, error) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
+	for attempt := 0; attempt < s.maxRetries; attempt++ {
+		availableDrivers, err := s.getAvailableDrivers()
+		if err != nil {
+			log.Printf("Failed to get available drivers: %v", err)
+			time.Sleep(3 * time.Second)
+			continue
+		}
 
-	fmt.Println("Requesting for %s %s", rideID, riderID)
-    for attempt := 0; attempt < s.maxRetries; attempt++ {
-        for driverID, available := range s.driverStatus {
-            if available {
-                assignmentKey := createAssignmentKey(rideID, driverID)
+		for _, driverID := range availableDrivers {
+			if err := s.setRideAssignmentStatus(rideID, driverID, "Pending"); err != nil {
+				log.Printf("Failed to set ride assignment status: %v", err)
+				continue
+			}
 
-                s.ch.Lock()
-                s.rideAssignmentStatus[assignmentKey] = "Pending" // Initially mark as pending
-                s.ch.Unlock()
+			req := &pb.AssignmentResponse{
+				RideId:         rideID,
+				RiderId:        riderID,
+				PickupLocation: pickupLocation,
+				Destination:    destination,
+			}
 
-                s.driverStatus[driverID] = false // Mark driver as unavailable
+			driverStream, exists := s.driverStreams[driverID]
+			if !exists {
+				log.Printf("Driver %s not connected", driverID)
+				if err := s.setRideAssignmentStatus(rideID, driverID, "Rejected"); err != nil {
+					log.Printf("Failed to update ride assignment status: %v", err)
+				}
+				continue
+			}
 
-                req := &pb.AssignmentResponse{
-                    RideId:         rideID,
-                    RiderId:        riderID,
-                    PickupLocation: pickupLocation,
-                    Destination:    destination,
-                }
+			go func(driverID string, stream pb.DriverService_GetRideRequestServer) {
+				if err := stream.Send(req); err != nil {
+					log.Printf("Failed to send assignment response to driver %s: %v", driverID, err)
+					if err := s.setRideAssignmentStatus(rideID, driverID, "Rejected"); err != nil {
+						log.Printf("Failed to update ride assignment status: %v", err)
+					}
+				}
+			}(driverID, driverStream)
 
-                driverStream, exists := s.driverStreams[driverID]
-                if !exists {
-                    log.Printf("Driver %s not connected", driverID)
-                    s.updateAssignmentStatus(assignmentKey, "Rejected")
-                    continue
-                }
+			time.Sleep(10 * time.Second)
 
-                go func(driverID string, stream pb.DriverService_GetRideRequestServer, assignmentKey string) {
-                    if err := stream.Send(req); err != nil {
-                        log.Printf("Failed to send assignment response to driver %s: %v", driverID, err)
-                        s.updateAssignmentStatus(assignmentKey, "Rejected")
-                    }
-                }(driverID, driverStream, assignmentKey)
+			status, err := s.getRideAssignmentStatus(rideID, driverID)
+			if err != nil {
+				log.Printf("Failed to get ride assignment status: %v", err)
+				continue
+			}
 
-                time.Sleep(10 * time.Second)
+			if status == "Accepted" {
+				log.Printf("Ride %s accepted by driver %s\n", rideID, driverID)
+				return driverID, nil
+			} else {
+				log.Printf("Ride %s not accepted by driver %s\n", rideID, driverID)
+				if err := s.setRideAssignmentStatus(rideID, driverID, "Rejected"); err != nil {
+					log.Printf("Failed to update ride assignment status: %v", err)
+				}
+			}
+		}
 
-                s.ch.Lock()
-                res := s.rideAssignmentStatus[assignmentKey] // Check the current status
-                s.ch.Unlock()
-
-                if res == "Accepted" {
-                    log.Printf("Ride %s accepted by driver %s\n", rideID, driverID)
-                    return driverID, nil
-                } else if res == "Rejected" {
-					s.updateAssignmentStatus(assignmentKey, "Rejected")
-                    log.Printf("Ride %s rejected by driver %s\n", rideID, driverID)
-                    s.driverStatus[driverID] = true // Mark driver as available again
-                } else {
-                    log.Printf("Driver %s did not respond in time. Reassigning...\n", driverID)
-                    s.updateAssignmentStatus(assignmentKey, "Rejected")
-                    s.driverStatus[driverID] = true // Mark driver as available again
-                }
-
-            }
-        }
 		log.Printf("No drivers available currently, trying again...\n")
 		time.Sleep(3 * time.Second)
-    }
+	}
 
-    return "", fmt.Errorf("no available drivers after multiple attempts")
+	return "", fmt.Errorf("no available drivers after multiple attempts")
 }
 
 func (s *rideSharingServer) AcceptRide(ctx context.Context, req *pb.AcceptRideRequest) (*pb.AcceptRideResponse, error) {
-    assignmentKey := createAssignmentKey(req.RideId, req.DriverId)
+	status, err := s.getRideAssignmentStatus(req.RideId, req.DriverId)
+	if err != nil {
+		return &pb.AcceptRideResponse{Status: "Error getting ride status"}, err
+	}
 
-    s.ch.Lock()
-    defer s.ch.Unlock()
+	if status == "Pending" {
+		if err := s.setRideAssignmentStatus(req.RideId, req.DriverId, "Accepted"); err != nil {
+			return &pb.AcceptRideResponse{Status: "Error updating ride status"}, err
+		}
+		
+		if err := s.setDriverStatus(req.DriverId, false); err != nil {
+			log.Printf("Failed to set driver %s as unavailable: %v", req.DriverId, err)
+			return &pb.AcceptRideResponse{Status: "Error updating driver status"}, err
+		}
+		
+		log.Printf("Ride %s accepted by driver %s", req.RideId, req.DriverId)
+		return &pb.AcceptRideResponse{Status: "Accepted"}, nil
+	}
 
-    if status, exists := s.rideAssignmentStatus[assignmentKey]; exists && status == "Pending" {
-        s.rideAssignmentStatus[assignmentKey] = "Accepted"
-        log.Println("Ride accepted by driver", req.DriverId)
-        return &pb.AcceptRideResponse{Status: "Accepted"}, nil
-    }
-
-    return &pb.AcceptRideResponse{Status: "Ride not found or already assigned"}, nil
+	return &pb.AcceptRideResponse{Status: "Ride not found or already assigned"}, nil
 }
 
 func (s *rideSharingServer) RejectRide(ctx context.Context, req *pb.RejectRideRequest) (*pb.RejectRideResponse, error) {
-    assignmentKey := createAssignmentKey(req.RideId, req.DriverId)
+    kvc := clientv3.NewKV(s.etcdClient)
 
-    s.ch.Lock()
-    defer s.ch.Unlock()
+    assignmentKey := fmt.Sprintf("/ride-sharing/ride-assignment/%s_%s", req.RideId, req.DriverId)
+    driverKey := fmt.Sprintf("/ride-sharing/drivers/%s", req.DriverId)
 
-    if status, exists := s.rideAssignmentStatus[assignmentKey]; exists && status != "Pending" {
-        s.rideAssignmentStatus[assignmentKey] = "Rejected"
-        log.Println("Ride rejected by driver", req.DriverId)
-        return &pb.RejectRideResponse{Status: "Rejected"}, nil
+    txn := kvc.Txn(ctx).If(
+        clientv3.Compare(clientv3.Value(assignmentKey), "=", "Pending"),
+    ).Then(
+        clientv3.OpPut(assignmentKey, "Rejected"),
+        clientv3.OpPut(driverKey, "available"),
+    )
+
+    txnResp, err := txn.Commit()
+    if err != nil {
+        log.Printf("Error in RejectRide transaction: %v", err)
+        return &pb.RejectRideResponse{Status: "Error rejecting ride"}, err
     }
 
-    return &pb.RejectRideResponse{Status: "Ride not found or already assigned"}, nil
+    if !txnResp.Succeeded {
+        return &pb.RejectRideResponse{Status: "Ride not found or already processed"}, nil
+    }
+
+    log.Printf("Ride %s rejected by driver %s", req.RideId, req.DriverId)
+    return &pb.RejectRideResponse{Status: "Rejected"}, nil
 }
 
 
 func (s *rideSharingServer) GetRideStatus(ctx context.Context, req *pb.RideStatusRequest) (*pb.RideStatusResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	status, exists := s.rideStatusStore[req.RideId]
-	if !exists {
+	status, err := s.getRideStatus(req.RideId)
+	if err != nil {
 		return &pb.RideStatusResponse{Status: "Ride not found"}, nil
 	}
 
@@ -207,24 +310,19 @@ func (s *rideSharingServer) GetRideStatus(ctx context.Context, req *pb.RideStatu
 }
 
 func (s *rideSharingServer) UpdateRideStatus(ctx context.Context, req *pb.UpdateRideStatusRequest) (*pb.UpdateRideStatusResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, exists := s.rideStatusStore[req.RideId]; !exists {
-		return &pb.UpdateRideStatusResponse{Status: "Ride not found"}, nil
+	if err := s.setRideStatus(req.RideId, req.Status); err != nil {
+		return &pb.UpdateRideStatusResponse{Status: "Error updating ride status"}, err
 	}
-
-	s.rideStatusStore[req.RideId] = req.Status
 	return &pb.UpdateRideStatusResponse{Status: "Status updated to " + req.Status}, nil
 }
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
-	serverCert, err := tls.LoadX509KeyPair("../certificate/server-cert.pem", "../certificate/server-key.pem")
+	serverCert, err := tls.LoadX509KeyPair("./certificate/server-cert.pem", "./certificate/server-key.pem")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load server certificate: %v", err)
 	}
 
-	caCert, err := ioutil.ReadFile("../certificate/ca-cert.pem")
+	caCert, err := ioutil.ReadFile("./certificate/ca-cert.pem")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA certificate: %v", err)
 	}
@@ -335,7 +433,7 @@ func combinedInterceptor() grpc.UnaryServerInterceptor {
 }
 
 func registerServer(etcdClient *clientv3.Client, port string) error {
-	lease, err := etcdClient.Grant(context.Background(), 60) // TTL of 60 seconds
+	lease, err := etcdClient.Grant(context.Background(), 60)
 
 	if err != nil {
 		return fmt.Errorf("failed to create lease: %v", err)
@@ -366,25 +464,21 @@ func registerServer(etcdClient *clientv3.Client, port string) error {
 }
 
 func (s *rideSharingServer) CompleteRide(ctx context.Context, req *pb.RideCompletionRequest) (*pb.RideCompletionResponse, error) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
+	if err := s.setRideStatus(req.RideId, "Completed"); err != nil {
+		return &pb.RideCompletionResponse{Status: "Error completing ride"}, err
+	}
 
-    if _, exists := s.rideStatusStore[req.RideId]; !exists {
-        return &pb.RideCompletionResponse{Status: "Ride not found"}, nil
-    }
+	if err := s.setDriverStatus(req.DriverId, true); err != nil {
+		log.Printf("Failed to set driver status to available: %v", err)
+	}
 
-    s.rideStatusStore[req.RideId] = "Completed"
+	if err := s.setRideAssignmentStatus(req.RideId, req.DriverId, "Completed"); err != nil {
+		log.Printf("Failed to update ride assignment status: %v", err)
+	}
 
-    s.driverStatus[req.DriverId] = true
+	log.Printf("Ride %s completed by driver %s\n", req.RideId, req.DriverId)
 
-    assignmentKey := createAssignmentKey(req.RideId, req.DriverId)
-    s.ch.Lock()
-    delete(s.rideAssignmentStatus, assignmentKey)
-    s.ch.Unlock()
-
-    log.Printf("Ride %s completed by driver %s\n", req.RideId, req.DriverId)
-
-    return &pb.RideCompletionResponse{Status: "Completed"}, nil
+	return &pb.RideCompletionResponse{Status: "Completed"}, nil
 }
 
 func main() {
@@ -428,7 +522,7 @@ func main() {
 
 	// healthServer.SetServingStatus("RiderService", grpc_health_v1.HealthCheckResponse_SERVING)
 
-	rideServer := NewRideSharingServer()
+	rideServer := NewRideSharingServer(etcdClient)
 	pb.RegisterRiderServiceServer(server, rideServer)
 	pb.RegisterDriverServiceServer(server, rideServer)
 

@@ -19,9 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RiderService_RequestRide_FullMethodName    = "/ride_sharing.RiderService/RequestRide"
-	RiderService_GetRideStatus_FullMethodName  = "/ride_sharing.RiderService/GetRideStatus"
-	RiderService_GetRiderStatus_FullMethodName = "/ride_sharing.RiderService/GetRiderStatus"
+	RiderService_RequestRide_FullMethodName   = "/ride_sharing.RiderService/RequestRide"
+	RiderService_GetRideStatus_FullMethodName = "/ride_sharing.RiderService/GetRideStatus"
 )
 
 // RiderServiceClient is the client API for RiderService service.
@@ -30,7 +29,6 @@ const (
 type RiderServiceClient interface {
 	RequestRide(ctx context.Context, in *RideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 	GetRideStatus(ctx context.Context, in *RideStatusRequest, opts ...grpc.CallOption) (*RideStatusResponse, error)
-	GetRiderStatus(ctx context.Context, in *GetRiderStatusRequest, opts ...grpc.CallOption) (*GetRiderStatusResponse, error)
 }
 
 type riderServiceClient struct {
@@ -61,23 +59,12 @@ func (c *riderServiceClient) GetRideStatus(ctx context.Context, in *RideStatusRe
 	return out, nil
 }
 
-func (c *riderServiceClient) GetRiderStatus(ctx context.Context, in *GetRiderStatusRequest, opts ...grpc.CallOption) (*GetRiderStatusResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetRiderStatusResponse)
-	err := c.cc.Invoke(ctx, RiderService_GetRiderStatus_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // RiderServiceServer is the server API for RiderService service.
 // All implementations must embed UnimplementedRiderServiceServer
 // for forward compatibility.
 type RiderServiceServer interface {
 	RequestRide(context.Context, *RideRequest) (*RideResponse, error)
 	GetRideStatus(context.Context, *RideStatusRequest) (*RideStatusResponse, error)
-	GetRiderStatus(context.Context, *GetRiderStatusRequest) (*GetRiderStatusResponse, error)
 	mustEmbedUnimplementedRiderServiceServer()
 }
 
@@ -93,9 +80,6 @@ func (UnimplementedRiderServiceServer) RequestRide(context.Context, *RideRequest
 }
 func (UnimplementedRiderServiceServer) GetRideStatus(context.Context, *RideStatusRequest) (*RideStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRideStatus not implemented")
-}
-func (UnimplementedRiderServiceServer) GetRiderStatus(context.Context, *GetRiderStatusRequest) (*GetRiderStatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRiderStatus not implemented")
 }
 func (UnimplementedRiderServiceServer) mustEmbedUnimplementedRiderServiceServer() {}
 func (UnimplementedRiderServiceServer) testEmbeddedByValue()                      {}
@@ -154,24 +138,6 @@ func _RiderService_GetRideStatus_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RiderService_GetRiderStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRiderStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RiderServiceServer).GetRiderStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: RiderService_GetRiderStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RiderServiceServer).GetRiderStatus(ctx, req.(*GetRiderStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // RiderService_ServiceDesc is the grpc.ServiceDesc for RiderService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -187,10 +153,6 @@ var RiderService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetRideStatus",
 			Handler:    _RiderService_GetRideStatus_Handler,
 		},
-		{
-			MethodName: "GetRiderStatus",
-			Handler:    _RiderService_GetRiderStatus_Handler,
-		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "protofiles/ride.proto",
@@ -200,7 +162,6 @@ const (
 	DriverService_AcceptRide_FullMethodName       = "/ride_sharing.DriverService/AcceptRide"
 	DriverService_RejectRide_FullMethodName       = "/ride_sharing.DriverService/RejectRide"
 	DriverService_CompleteRide_FullMethodName     = "/ride_sharing.DriverService/CompleteRide"
-	DriverService_GetDriverStatus_FullMethodName  = "/ride_sharing.DriverService/GetDriverStatus"
 	DriverService_GetRideRequest_FullMethodName   = "/ride_sharing.DriverService/GetRideRequest"
 	DriverService_UpdateRideStatus_FullMethodName = "/ride_sharing.DriverService/UpdateRideStatus"
 )
@@ -212,7 +173,6 @@ type DriverServiceClient interface {
 	AcceptRide(ctx context.Context, in *AcceptRideRequest, opts ...grpc.CallOption) (*AcceptRideResponse, error)
 	RejectRide(ctx context.Context, in *RejectRideRequest, opts ...grpc.CallOption) (*RejectRideResponse, error)
 	CompleteRide(ctx context.Context, in *RideCompletionRequest, opts ...grpc.CallOption) (*RideCompletionResponse, error)
-	GetDriverStatus(ctx context.Context, in *GetDriverStatusRequest, opts ...grpc.CallOption) (*GetDriverStatusResponse, error)
 	GetRideRequest(ctx context.Context, in *AssignmentRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AssignmentResponse], error)
 	UpdateRideStatus(ctx context.Context, in *UpdateRideStatusRequest, opts ...grpc.CallOption) (*UpdateRideStatusResponse, error)
 }
@@ -255,16 +215,6 @@ func (c *driverServiceClient) CompleteRide(ctx context.Context, in *RideCompleti
 	return out, nil
 }
 
-func (c *driverServiceClient) GetDriverStatus(ctx context.Context, in *GetDriverStatusRequest, opts ...grpc.CallOption) (*GetDriverStatusResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetDriverStatusResponse)
-	err := c.cc.Invoke(ctx, DriverService_GetDriverStatus_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *driverServiceClient) GetRideRequest(ctx context.Context, in *AssignmentRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AssignmentResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &DriverService_ServiceDesc.Streams[0], DriverService_GetRideRequest_FullMethodName, cOpts...)
@@ -301,7 +251,6 @@ type DriverServiceServer interface {
 	AcceptRide(context.Context, *AcceptRideRequest) (*AcceptRideResponse, error)
 	RejectRide(context.Context, *RejectRideRequest) (*RejectRideResponse, error)
 	CompleteRide(context.Context, *RideCompletionRequest) (*RideCompletionResponse, error)
-	GetDriverStatus(context.Context, *GetDriverStatusRequest) (*GetDriverStatusResponse, error)
 	GetRideRequest(*AssignmentRequest, grpc.ServerStreamingServer[AssignmentResponse]) error
 	UpdateRideStatus(context.Context, *UpdateRideStatusRequest) (*UpdateRideStatusResponse, error)
 	mustEmbedUnimplementedDriverServiceServer()
@@ -322,9 +271,6 @@ func (UnimplementedDriverServiceServer) RejectRide(context.Context, *RejectRideR
 }
 func (UnimplementedDriverServiceServer) CompleteRide(context.Context, *RideCompletionRequest) (*RideCompletionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CompleteRide not implemented")
-}
-func (UnimplementedDriverServiceServer) GetDriverStatus(context.Context, *GetDriverStatusRequest) (*GetDriverStatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDriverStatus not implemented")
 }
 func (UnimplementedDriverServiceServer) GetRideRequest(*AssignmentRequest, grpc.ServerStreamingServer[AssignmentResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method GetRideRequest not implemented")
@@ -407,24 +353,6 @@ func _DriverService_CompleteRide_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DriverService_GetDriverStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetDriverStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DriverServiceServer).GetDriverStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DriverService_GetDriverStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DriverServiceServer).GetDriverStatus(ctx, req.(*GetDriverStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _DriverService_GetRideRequest_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(AssignmentRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -472,10 +400,6 @@ var DriverService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CompleteRide",
 			Handler:    _DriverService_CompleteRide_Handler,
-		},
-		{
-			MethodName: "GetDriverStatus",
-			Handler:    _DriverService_GetDriverStatus_Handler,
 		},
 		{
 			MethodName: "UpdateRideStatus",

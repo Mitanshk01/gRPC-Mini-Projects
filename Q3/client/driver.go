@@ -208,12 +208,12 @@ func completeRide() {
 }
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
-	clientCert, err := tls.LoadX509KeyPair("../certificate/driver-cert.pem", "../certificate/driver-key.pem")
+	clientCert, err := tls.LoadX509KeyPair("./certificate/driver-cert.pem", "./certificate/driver-key.pem")
 	if err != nil {
 		log.Fatalf("Failed to load client certificate: %v", err)
 	}
 
-	caCert, err := ioutil.ReadFile("../certificate/ca-cert.pem")
+	caCert, err := ioutil.ReadFile("./certificate/ca-cert.pem")
 	if err != nil {
 		log.Fatalf("Failed to read CA certificate: %v", err)
 	}

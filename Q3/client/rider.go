@@ -27,12 +27,12 @@ var currentRideID string = ""
 var riderID string
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
-	clientCert, err := tls.LoadX509KeyPair("../certificate/rider-cert.pem", "../certificate/rider-key.pem")
+	clientCert, err := tls.LoadX509KeyPair("./certificate/rider-cert.pem", "./certificate/rider-key.pem")
 	if err != nil {
 		log.Fatalf("Failed to load client certificate: %v", err)
 	}
 
-	caCert, err := ioutil.ReadFile("../certificate/ca-cert.pem")
+	caCert, err := ioutil.ReadFile("./certificate/ca-cert.pem")
 	if err != nil {
 		log.Fatalf("Failed to read CA certificate: %v", err)
 	}

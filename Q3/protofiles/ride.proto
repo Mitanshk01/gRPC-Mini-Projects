@@ -17,7 +17,7 @@ message AssignmentRequest {
 message RideResponse {
     string ride_id = 1;
     string driver_id = 2;
-    string status = 3; // e.g., "Assigned", "Pending", etc.
+    string status = 3;
 }
 
 message RideStatusRequest {
@@ -29,14 +29,13 @@ message RideStatusResponse {
     string status = 2;
 }
 
-// Accept/reject ride (no change)
 message AcceptRideRequest {
     string driver_id = 1;
     string ride_id = 2;
 }
 
 message AcceptRideResponse {
-    string status = 1; // e.g., "Accepted", "Reassigned"
+    string status = 1;
 }
 
 message RejectRideRequest {
@@ -45,7 +44,7 @@ message RejectRideRequest {
 }
 
 message RejectRideResponse {
-    string status = 1; // e.g., "Rejected", "Reassigned"
+    string status = 1;
 }
 
 message RideCompletionRequest {
@@ -57,33 +56,23 @@ message RideCompletionResponse {
     string status = 1;
 }
 
-// Status checks for rider and driver (no change)
-message GetRiderStatusRequest {
-    string rider_id = 1;
-}
-
-message GetRiderStatusResponse {
-    string rider_id = 1;
-    string status = 2; // e.g., "Awaiting Ride", "In Ride", etc.
-}
-
 message GetDriverStatusRequest {
     string driver_id = 1;
 }
 
 message GetDriverStatusResponse {
     string driver_id = 1;
-    string status = 2; // e.g., "Available", "Assigned", "In Ride"
+    string status = 2;
 }
 
 message UpdateRideStatusRequest {
-    string ride_id = 1; // ID of the ride
-    string status = 2; // New status (e.g., "In Progress", "Cancelled")
+    string ride_id = 1;
+    string status = 2;
 }
 
 message UpdateRideStatusResponse {
-    string ride_id = 1; // ID of the ride
-    string status = 2; // Updated status
+    string ride_id = 1;
+    string status = 2;
 }
 
 message AssignmentResponse {
@@ -96,7 +85,6 @@ message AssignmentResponse {
 service RiderService {
     rpc RequestRide(RideRequest) returns (RideResponse);
     rpc GetRideStatus(RideStatusRequest) returns (RideStatusResponse);
-    rpc GetRiderStatus(GetRiderStatusRequest) returns (GetRiderStatusResponse);
 }
 
 service DriverService {
