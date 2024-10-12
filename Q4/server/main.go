@@ -64,45 +64,46 @@ func (s *DocumentServer) SyncDocumentChanges(stream pb.CollaborativeDocumentServ
             clientID = change.ClientId
             s.clients[clientID] = stream
             log.Printf("Client %s connected.", clientID)
+        }
 
-            initialChange := &pb.DocumentChange{
+        switch change.ChangeType {
+        case "initial":
+            reloadChange := &pb.DocumentChange{
                 ClientId:   clientID,
                 Content:    s.documentContent,
-                ChangeType: "initial",
+                ChangeType: change.ChangeType,
                 Position:   0,
                 Timestamp:  change.Timestamp,
             }
             s.mu.Unlock()
 
-            if err := stream.Send(initialChange); err != nil {
-                log.Printf("Error sending initial content to client %s: %v", clientID, err)
+            if err := stream.Send(reloadChange); err != nil {
+                log.Printf("Error sending reload content to client %s: %v", clientID, err)
                 return err
             }
 
             s.mu.Lock()
-        } else {
-            switch change.ChangeType {
-            case "add":
-                pos := int(change.Position)
-                s.documentContent = s.documentContent[:pos] + change.Content + s.documentContent[pos:]
-            case "edit":
-                var editChange changeData
-                if err := json.Unmarshal([]byte(change.Content), &editChange); err != nil {
-                    log.Printf("Error unmarshaling edit change: %v", err)
-                    return err
-                }
-
-                deletePos := editChange.DeletePosition
-                s.documentContent = s.documentContent[:deletePos] + s.documentContent[deletePos+len(editChange.DeleteContent):]
-
-                addPos := editChange.AddPosition
-                s.documentContent = s.documentContent[:addPos] + editChange.AddContent + s.documentContent[addPos:]
-
-            case "delete":
-                pos := int(change.Position) - 1
-                s.documentContent = s.documentContent[:pos] + s.documentContent[pos+len(change.Content):]
+        case "add":
+            pos := int(change.Position)
+            s.documentContent = s.documentContent[:pos] + change.Content + s.documentContent[pos:]
+        case "edit":
+            var editChange changeData
+            if err := json.Unmarshal([]byte(change.Content), &editChange); err != nil {
+                log.Printf("Error unmarshaling edit change: %v", err)
+                return err
             }
 
+            deletePos := editChange.DeletePosition
+            s.documentContent = s.documentContent[:deletePos] + s.documentContent[deletePos+len(editChange.DeleteContent):]
+
+            addPos := editChange.AddPosition
+            s.documentContent = s.documentContent[:addPos] + editChange.AddContent + s.documentContent[addPos:]
+        case "delete":
+            pos := int(change.Position) - 1
+            s.documentContent = s.documentContent[:pos] + s.documentContent[pos+len(change.Content):]
+        }
+
+        if change.ChangeType != "initial" && change.ChangeType != "reload" {
             for id, clientStream := range s.clients {
                 if id != clientID {
                     go func(clientID string, clientStream pb.CollaborativeDocumentService_SyncDocumentChangesServer) {

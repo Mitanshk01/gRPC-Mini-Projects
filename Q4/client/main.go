@@ -15,6 +15,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	pb "github.com/Mitanshk01/DS_HW4/Q4/protofiles"
 	"github.com/google/uuid"
 )
@@ -115,27 +117,37 @@ func handleDocumentEdit(msg changeData) {
 
 func SyncDocumentChanges(conn pb.CollaborativeDocumentServiceClient) {
 	var err error
-	grpcStream, err = conn.SyncDocumentChanges(context.Background())
-	if err != nil {
-		log.Fatalf("Error connecting to stream: %v", err)
-	}
+	for {
+		grpcStream, err = conn.SyncDocumentChanges(context.Background())
+		if err != nil {
+			log.Printf("Error connecting to stream: %v", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
 
-	initialChange := &pb.DocumentChange{
-		ClientId:   clientID,
-		Content:    "",
-		ChangeType: "initial",
-		Position:   0,
-	}
+		initialChange := &pb.DocumentChange{
+			ClientId:   clientID,
+			Content:    "",
+			ChangeType: "initial",
+			Position:   0,
+			Timestamp:  time.Now().Format(time.RFC3339),
+		}
 
-	if err := grpcStream.Send(initialChange); err != nil {
-		log.Fatalf("Error sending initial request: %v", err)
-	}
+		if err := grpcStream.Send(initialChange); err != nil {
+			log.Printf("Error sending initial request: %v", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
 
-	go func() {
 		for {
 			in, err := grpcStream.Recv()
 			if err != nil {
-				log.Fatalf("Error receiving changes: %v", err)
+				if status.Code(err) == codes.Unavailable {
+					log.Printf("gRPC server unavailable: %v", err)
+					break
+				}
+				log.Printf("Error receiving changes: %v", err)
+				break
 			}
 			
 			mu.Lock()
@@ -145,11 +157,12 @@ func SyncDocumentChanges(conn pb.CollaborativeDocumentServiceClient) {
 			case "add":
 				docContent = docContent[:in.Position] + in.Content + docContent[in.Position:]
 			case "delete":
-				log.Printf("%d, %d", docContent, in.Position, in.Content)
-				docContent = docContent[:in.Position - 1] + docContent[in.Position+int32(len(in.Content))-1:]
+				docContent = docContent[:in.Position-1] + docContent[in.Position+int32(len(in.Content))-1:]
 			case "edit":
 				var change changeData
 				if err := json.Unmarshal([]byte(in.Content), &change); err != nil {
+					log.Printf("Error unmarshaling edit change: %v", err)
+					mu.Unlock()
 					continue
 				}
 				docContent = docContent[:change.DeletePosition] + change.AddContent + docContent[change.DeletePosition+len(change.DeleteContent):]
@@ -158,13 +171,17 @@ func SyncDocumentChanges(conn pb.CollaborativeDocumentServiceClient) {
 
 			broadcastChange(in)
 		}
-	}()
+
+		log.Println("Connection lost. Attempting to reconnect...")
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func broadcastChange(change *pb.DocumentChange) {
 	for client := range clients {
-		err := client.WriteJSON(map[string]string{
-			"Content": docContent,
+		err := client.WriteJSON(map[string]interface{}{
+			"Content":    docContent,
+			"ChangeType": change.ChangeType,
 		})
 		if err != nil {
 			log.Printf("Error sending change to client: %v", err)
@@ -198,13 +215,21 @@ func renderHTML(w http.ResponseWriter, r *http.Request) {
 				font-size: 16px;
 				background-color: #fff;
 			}
+			#status {
+				margin-top: 10px;
+				padding: 10px;
+				background-color: #f0f0f0;
+				border: 1px solid #ccc;
+			}
 		</style>
 	</head>
 	<body>
 		<h1>Collaborative Document Editor</h1>
 		<textarea id="editor">{{.}}</textarea>
+		<div id="status">Connection status: <span id="connectionStatus">Connected</span></div>
 		<script>
 		const editor = document.getElementById('editor');
+		const connectionStatus = document.getElementById('connectionStatus');
 		let lastContent = editor.value;
 		let isRemoteUpdate = false;
 		let lastSelectionStart = editor.selectionStart;
@@ -214,6 +239,12 @@ func renderHTML(w http.ResponseWriter, r *http.Request) {
 
 		socket.onopen = () => {
 			console.log('WebSocket connection established');
+			connectionStatus.textContent = 'Connected';
+		};
+
+		socket.onclose = () => {
+			console.log('WebSocket connection closed');
+			connectionStatus.textContent = 'Disconnected';
 		};
 
 		socket.onmessage = (event) => {
