@@ -12,9 +12,7 @@ GO_FLAGS = --go_out=$(PROTO_OUT_DIR) --go_opt=paths=source_relative \
 
 SERVER_PORT = 50051
 
-.PHONY: all proto server client clean tests
-
-all: proto server client
+.PHONY: proto server client clean tests
 
 proto:
 	protoc $(GO_FLAGS) $(PROTO_FILE_LABYRINTH) $(PROTO_FILE_PLAYER) $(PROTO_FILE_COMMON)
