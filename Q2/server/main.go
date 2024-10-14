@@ -97,18 +97,18 @@ func main() {
 
     datasetSubset, err := loadDatasetFromFile(*datasetFile)
     if err != nil {
-        log.Fatalf("failed to load dataset: %v", err)
+        log.Fatalf("Failed to load dataset: %v", err)
     }
 
     lis, err := net.Listen("tcp", ":"+*port)
     if err != nil {
-        log.Fatalf("failed to listen: %v", err)
+        log.Fatalf("Failed to listen: %v", err)
     }
 
     grpcServer := grpc.NewServer()
     knn.RegisterKNNServiceServer(grpcServer, &server{dataset: datasetSubset})
     log.Printf("Server listening on port %s", *port)
     if err := grpcServer.Serve(lis); err != nil {
-        log.Fatalf("failed to serve: %v", err)
+        log.Fatalf("Failed to serve: %v", err)
     }
 }

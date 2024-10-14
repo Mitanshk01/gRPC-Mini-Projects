@@ -9,8 +9,8 @@ import (
 
 const (
     numServers = 5
-    inputFile  = "dataset.txt"
-    outputFilePattern = "dataset_server_%d.txt"
+    inputFile  = "./dataset/dataset.txt"
+    outputFilePattern = "./dataset/dataset_server_%d.txt"
 )
 
 func partitionDataset() error {

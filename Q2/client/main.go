@@ -1,16 +1,16 @@
 package main
 
 import (
+    "container/heap"
     "context"
     "fmt"
     "io"
     "log"
-    "sort"
     "sync"
     "time"
 
     "google.golang.org/grpc"
-    knn "github.com/Mitanshk01/DS_HW4/Q2/protofiles"
+    pb "github.com/Mitanshk01/DS_HW4/Q2/protofiles"
 )
 
 const (
@@ -19,15 +19,28 @@ const (
 )
 
 type Neighbor struct {
-    Point    *knn.DataPoint
+    Point    *pb.DataPoint
     Distance float32
 }
 
-type ByDistance []Neighbor
+// MaxHeap interface implementation
+type MaxHeap []Neighbor
 
-func (a ByDistance) Len() int           { return len(a) }
-func (a ByDistance) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByDistance) Less(i, j int) bool { return a[i].Distance < a[j].Distance }
+func (h MaxHeap) Len() int           { return len(h) }
+func (h MaxHeap) Less(i, j int) bool { return h[i].Distance > h[j].Distance }
+func (h MaxHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *MaxHeap) Push(x interface{}) {
+    *h = append(*h, x.(Neighbor))
+}
+
+func (h *MaxHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[0 : n-1]
+    return x
+}
 
 func main() {
     var queryX, queryY float64
@@ -45,8 +58,10 @@ func main() {
         log.Fatalf("Failed to read k value: %v", err)
     }
 
-    queryPoint := &knn.DataPoint{Coordinates: []float32{float32(queryX), float32(queryY)}}
-    var allNeighbors []Neighbor
+    queryPoint := &pb.DataPoint{Coordinates: []float32{float32(queryX), float32(queryY)}}
+    neighborHeap := &MaxHeap{}
+    heap.Init(neighborHeap)
+
     var mu sync.Mutex
     var wg sync.WaitGroup
 
@@ -64,12 +79,12 @@ func main() {
             }
             defer conn.Close()
 
-            client := knn.NewKNNServiceClient(conn)
+            client := pb.NewKNNServiceClient(conn)
 
             ctx, cancel := context.WithTimeout(context.Background(), time.Second)
             defer cancel()
 
-            stream, err := client.FindKNearestNeighbors(ctx, &knn.KNNRequest{QueryPoint: queryPoint, K: int32(k)})
+            stream, err := client.FindKNearestNeighbors(ctx, &pb.KNNRequest{QueryPoint: queryPoint, K: int32(k)})
             if err != nil {
                 log.Printf("could not call FindKNearestNeighbors on server %d: %v", port, err)
                 return
@@ -86,10 +101,18 @@ func main() {
                 }
 
                 mu.Lock()
-                allNeighbors = append(allNeighbors, Neighbor{
-                    Point:    neighbor.Point,
-                    Distance: neighbor.Distance,
-                })
+                if neighborHeap.Len() < k {
+                    heap.Push(neighborHeap, Neighbor{
+                        Point:    neighbor.Point,
+                        Distance: neighbor.Distance,
+                    })
+                } else if neighbor.Distance < (*neighborHeap)[0].Distance {
+                    heap.Pop(neighborHeap)
+                    heap.Push(neighborHeap, Neighbor{
+                        Point:    neighbor.Point,
+                        Distance: neighbor.Distance,
+                    })
+                }
                 mu.Unlock()
             }
         }(port)
@@ -97,16 +120,16 @@ func main() {
 
     wg.Wait()
 
-    sort.Sort(ByDistance(allNeighbors))
-
-    if len(allNeighbors) < k {
-        log.Fatalf("Error: Queried k (%d) is greater than the number of available points (%d).", k, len(allNeighbors))
+    if neighborHeap.Len() < k {
+        log.Fatalf("Error: Queried k (%d) is greater than the number of available points (%d).", k, neighborHeap.Len())
     }
 
-    allNeighbors = allNeighbors[:k]
-
     fmt.Println("Global K Nearest Neighbors:")
-    for _, neighbor := range allNeighbors {
+    results := make([]Neighbor, neighborHeap.Len())
+    for i := len(results) - 1; i >= 0; i-- {
+        results[i] = heap.Pop(neighborHeap).(Neighbor)
+    }
+    for _, neighbor := range results {
         fmt.Printf("Point: %v, Distance: %f\n", neighbor.Point.Coordinates, neighbor.Distance)
     }
 }
