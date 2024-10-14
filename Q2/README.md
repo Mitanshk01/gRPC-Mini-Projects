@@ -80,21 +80,40 @@ This part implements a distributed K-Nearest Neighbors (KNN) algorithm using gRP
 
 To run the distributed KNN system, follow these steps (from the root directory Q2/):
 
-1. Start multiple server instances (5 servers):
+1. Build the proto-files:
+   ```
+   make proto
+   ```
+   
+   This script will clean up previous builds and generate the necessary proto files.
+
+2. Start all the server instances (5 servers) in different terminals:
    ```
    $ make server1
+   ```
+
+   ```
    $ make server2
+   ```
+
+   ```
    $ make server3
+   ```
+
+   ```
    $ make server4
+   ```
+
+   ```
    $ make server5
    ```
 
-2. In a separate terminal, start the client:
+3. In a separate terminal, start the client:
    ```
    $ make client
    ```
 
-3. Follow the prompts in the client to input queries and receive KNN results.
+4. Follow the prompts in the client to input queries and receive KNN results.
 
 ## Makefile Usage
 
