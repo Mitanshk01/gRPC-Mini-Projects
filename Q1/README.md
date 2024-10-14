@@ -37,6 +37,21 @@ Course : Distributed Systems, Monsoon '24
 ## Overview
 This part implements a single player labyrinth game using gRPC for client-server communication. The game allows the player to navigate through a labyrinth, collect treasures, and use spells to reach the exit and win the game.
 
+## Additional Details
+At every step the user is prompted to play the game, and the following prompt is shown to the user:
+
+```
+Available commands:
+1. labyrinth_info - Get labyrinth dimensions
+2. player_status - Get player score, health, and position
+3. move [DIRECTION] - Move the player (DIRECTION: U, D, L, R)
+4. revelio [X] [Y] [TileType] - Use Revelio spell at given position and tile type
+5. bombarda [X1] [Y1] [X2] [Y2] [X3] [Y3] - Use Bombarda spell at the 3 given positions
+6. exit - Exit the game
+```
+
+The user can enter a valid command and will be shown responses accordingly. In case an invalid command is given, an error would be thrown accordingly as well.
+
 ## Components
 
 ### Proto Files
@@ -104,7 +119,7 @@ The Makefile provides several commands to simplify development and testing:
 - `make client`: Builds and runs the client.
 - `make tests`: Runs the unit tests.
 
-To use these commands, simply run `make <command>` in the terminal (from the root directory).
+To use these commands, simply run `make <command>` in the terminal (from the root directory Q1/).
 
 ## Unit Tests
 
@@ -117,7 +132,7 @@ Unit tests are implemented in `server/labyrinth_test.go`. These tests cover vari
 - Concurrent player actions
 - Edge case scenarios (e.g., moving into walls, invalid moves)
 
-To run the unit tests, use the following command (from the root directory, mentioned above as well):
+To run the unit tests, use the following command (from the root directory Q1/, mentioned above as well):
 
 ```
 $ make tests
