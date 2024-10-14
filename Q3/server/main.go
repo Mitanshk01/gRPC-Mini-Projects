@@ -28,7 +28,6 @@ type rideSharingServer struct {
 	pb.UnimplementedRiderServiceServer
 	pb.UnimplementedDriverServiceServer
 	mu                   sync.Mutex
-	ch                   sync.Mutex
 	driverStreams        map[string]pb.DriverService_GetRideRequestServer
 	maxRetries           int
 	etcdClient           *clientv3.Client

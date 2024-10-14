@@ -1,6 +1,7 @@
 PROTO_DIR = protofiles
 CLIENT_DIR = client
 SERVER_DIR = server
+CERT_DIR = certificate
 
 PROTO_FILE = $(PROTO_DIR)/ride.proto
 PROTO_OUT_DIR = .
@@ -12,10 +13,10 @@ SERVER1_PORT = 50051
 SERVER2_PORT = 50052
 SERVER3_PORT = 50053
 
-.PHONY: proto server1 server2 server3 driver rider clean
+.PHONY: proto server1 server2 server3 driver rider clean certificate
 
-# etcd_server:
-# 	/$(SERVER_DIR)/etcd
+certificate:
+	./$(CERT_DIR)/gen_certificate.sh
 
 proto:
 	protoc $(GO_FLAGS) $(PROTO_FILE)
@@ -32,8 +33,11 @@ server3:
 driver:
 	go run $(CLIENT_DIR)/driver.go
 
-rider:
-	go run $(CLIENT_DIR)/rider.go
+rider_roundrobin:
+	go run $(CLIENT_DIR)/rider.go --policy=round_robin
+
+rider_pickfirst:
+	go run $(CLIENT_DIR)/rider.go --policy=pick_first
 
 clean:
 	rm -f $(PROTO_DIR)/*.pb.go
