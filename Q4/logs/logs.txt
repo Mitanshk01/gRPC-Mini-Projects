@@ -106,3 +106,85 @@
 [2024-10-12 11:12:54] ClientID: 860af1ef-935e-4334-9452-f1c377ad57ac | ChangeType: add | Position: 3 | Content:  
 [2024-10-12 11:12:55] ClientID: 860af1ef-935e-4334-9452-f1c377ad57ac | ChangeType: add | Position: 4 | Content: v
 [2024-10-12 11:12:55] ClientID: 860af1ef-935e-4334-9452-f1c377ad57ac | ChangeType: add | Position: 5 | Content: f
+[2024-10-13 22:13:38] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 0 | Content: c
+[2024-10-13 22:13:38] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 1 | Content: f
+[2024-10-13 22:13:38] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 2 | Content: v
+[2024-10-13 22:14:10] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 3 | Content:  
+[2024-10-13 22:14:10] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 4 | Content: v
+[2024-10-13 22:14:10] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 5 | Content: j
+[2024-10-13 22:14:11] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 6 | Content: f
+[2024-10-13 22:14:11] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 7 | Content: v
+[2024-10-13 22:14:14] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 8 | Content:  
+[2024-10-13 22:14:14] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 9 | Content: v
+[2024-10-13 22:14:15] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 10 | Content: v
+[2024-10-13 22:14:15] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 11 | Content: f
+[2024-10-13 22:14:26] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 3 | Content: c
+[2024-10-13 22:14:27] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 4 | Content: d
+[2024-10-13 22:14:27] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 5 | Content: c
+[2024-10-13 22:14:27] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 6 | Content: d
+[2024-10-13 22:14:33] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 16 | Content:  
+[2024-10-13 22:14:33] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 17 | Content:  
+[2024-10-13 22:14:33] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 18 | Content: j
+[2024-10-13 22:14:35] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 19 | Content: 
+
+[2024-10-13 22:14:35] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 20 | Content: cfvcdcd vjfv vvf  j
+[2024-10-13 22:14:39] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: edit | Position: 20 | OldContent: cfvcdcd vjfv vvf  j | NewContent: 
+[2024-10-13 22:17:32] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 19 | Content: 
+
+[2024-10-13 22:17:33] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: add | Position: 20 | Content: 
+
+[2024-10-13 22:17:40] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: delete | Position: 15 | Content: v
+[2024-10-13 22:17:41] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: delete | Position: 14 | Content: v
+[2024-10-13 22:17:42] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: delete | Position: 13 | Content:  
+[2024-10-13 22:17:43] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 17 | Content: j
+[2024-10-13 22:17:47] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 18 | Content: 
+
+[2024-10-13 22:17:48] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 19 | Content: 
+
+[2024-10-13 22:17:49] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 20 | Content: 
+
+[2024-10-13 22:17:49] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 21 | Content: 
+
+[2024-10-13 22:18:46] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: delete | Position: 21 | Content: 
+
+[2024-10-13 22:18:46] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: delete | Position: 20 | Content: 
+
+[2024-10-13 22:18:47] ClientID: 6cc18d01-ab58-4a90-92b0-2c05ad01083f | ChangeType: delete | Position: 19 | Content: 
+
+[2024-10-13 22:18:49] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: delete | Position: 20 | Content: 
+
+[2024-10-13 22:18:49] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: delete | Position: 19 | Content: 
+
+[2024-10-13 22:18:52] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: delete | Position: 6 | Content: c
+[2024-10-13 22:18:52] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 5 | Content: c
+[2024-10-13 22:18:53] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 6 | Content: c
+[2024-10-13 22:18:53] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 7 | Content: h
+[2024-10-13 22:18:53] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 8 | Content: g
+[2024-10-13 22:18:53] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 9 | Content: v
+[2024-10-13 22:19:05] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: edit | Position: 0 | OldContent: cfvcdcchgvd vjfvf  j
+j
+ | NewContent: 
+[2024-10-13 22:19:06] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 0 | Content: 
+[2024-10-13 22:19:30] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 0 | Content: n
+[2024-10-13 22:19:30] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 1 | Content: j
+[2024-10-13 22:19:30] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 2 | Content: j
+[2024-10-13 22:19:30] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 3 | Content: b
+[2024-10-13 22:19:31] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 4 | Content: j
+[2024-10-13 22:19:31] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 5 | Content: b
+[2024-10-13 22:20:20] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: edit | Position: 0 | OldContent: njjbjb | NewContent: 
+[2024-10-13 22:20:23] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 0 | Content: g
+[2024-10-13 22:20:23] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 1 | Content: g
+[2024-10-13 22:20:27] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 2 | Content: 
+
+[2024-10-13 22:20:27] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 3 | Content: y
+[2024-10-13 22:20:28] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 4 | Content: y
+[2024-10-13 22:20:35] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 2 | Content: t
+[2024-10-13 22:20:35] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 3 | Content: y
+[2024-10-13 22:20:35] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 4 | Content: u
+[2024-10-13 22:20:36] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 5 | Content: d
+[2024-10-13 22:20:42] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 9 | Content: 
+
+[2024-10-13 22:20:43] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 10 | Content: ty
+[2024-10-13 22:20:52] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 9 | Content: 
+
+[2024-10-13 22:20:57] ClientID: bbdcdcc1-5cc1-436b-89ee-4bde40a3776d | ChangeType: add | Position: 10 | Content: tyud

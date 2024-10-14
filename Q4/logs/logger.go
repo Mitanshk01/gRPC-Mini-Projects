@@ -2,7 +2,7 @@ package main
 
 import (
     "context"
-    "encoding/json" // Import to handle JSON parsing
+    "encoding/json"
     "flag"
     "fmt"
     "log"
@@ -13,12 +13,10 @@ import (
     pb "github.com/Mitanshk01/DS_HW4/Q4/protofiles"
 )
 
-// LoggerClient struct
 type LoggerClient struct {
     logFile *os.File
 }
 
-// NewLoggerClient initializes the logger
 func NewLoggerClient() *LoggerClient {
     logFile, err := os.OpenFile("./logs/logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
     if err != nil {
@@ -28,7 +26,6 @@ func NewLoggerClient() *LoggerClient {
     return &LoggerClient{logFile: logFile}
 }
 
-// StreamDocumentLogs receives log data from the server
 func (lc *LoggerClient) StreamDocumentLogs(client pb.CollaborativeDocumentServiceClient) error {
     stream, err := client.StreamDocumentLogs(context.Background(), &pb.EmptyMessage{})
     if err != nil {
@@ -41,7 +38,6 @@ func (lc *LoggerClient) StreamDocumentLogs(client pb.CollaborativeDocumentServic
             return fmt.Errorf("error receiving log stream: %v", err)
         }
 
-        // Parse and format the timestamp
         ts, err := time.Parse(time.RFC3339, change.Timestamp)
         if err != nil {
             log.Printf("Error parsing timestamp: %v, using raw value.", err)
