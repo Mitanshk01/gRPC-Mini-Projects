@@ -44,12 +44,12 @@ To run the MyUber Application, follow these steps (from the root directory Q3/):
 
 2. Generate the certificates required for mTLS authorization:
    ```
+   chmod +x ./certificate/gen_certificate.sh
    make certificate
    ```
 
-3. Start the etcd client from the server/ directory (You would need to install this):
+3. Start the etcd client (You would need to install this):
     ```
-    $ cd server/
     $ etcd
     ```
 
@@ -87,4 +87,4 @@ To run the MyUber Application, follow these steps (from the root directory Q3/):
         $ make driver
         ```
 
-5. Follow the prompts in the clients rider and driver to interact with the MyUber system. You can test the application as per your wish. All requirements for the system have been fulfilled.
+5. Follow the prompts in the clients rider and driver to interact with the MyUber system. You can test the application as per your wish. All requirements for the system have been fulfilled. From the rider client, you get an option to request a ride, get it's status (if a ride is ongoing) and exit the application. From the driver end you can accept/reject ride requests.
