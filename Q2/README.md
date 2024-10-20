@@ -13,6 +13,7 @@ Course : Distributed Systems, Monsoon '24
 📁 Q2
 ├── 📁 client
 │   └── 📄 main.go
+│   └── 📄 data_collection.go
 ├── 📁 dataset
 │   └── 📄 dataset_server_1.txt
 │   └── 📄 dataset_server_2.txt
@@ -49,6 +50,7 @@ This part implements a distributed K-Nearest Neighbors (KNN) algorithm using gRP
 
 ### Client
 - `main.go`: Implements the client that sends KNN queries to multiple servers and aggregates results.
+- `data_collection.go`: Implements the client with metrics logging to aggregate performance results.
 
 ### Dataset
 - `dataset_server_*.txt`: Partitioned datasets for each server.
