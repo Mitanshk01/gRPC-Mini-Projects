@@ -108,13 +108,13 @@ func useBombarda(client pb.LabyrinthServiceClient, positions [][2]uint32) {
         log.Fatalf("Could not start Bombarda: %v", err)
     }
 
-    points := []*pb.BombardaRequest{
-        {TargetPosition: &pb.Position{PositionX: 1, PositionY: 1}},
-        {TargetPosition: &pb.Position{PositionX: 2, PositionY: 2}},
-        {TargetPosition: &pb.Position{PositionX: 3, PositionY: 3}},
-    }
-
-    for _, req := range points {
+    for _, pos := range positions {
+        req := &pb.BombardaRequest{
+            TargetPosition: &pb.Position{
+                PositionX: pos[0],
+                PositionY: pos[1],
+            },
+        }
         if err := bombardaStream.Send(req); err != nil {
             log.Fatalf("Failed to send BombardaRequest: %v", err)
         }

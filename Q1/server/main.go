@@ -5,6 +5,7 @@ import (
     "context"
     "errors"
     "flag"
+    "fmt"
     "log"
     "net"
     "os"
@@ -147,6 +148,8 @@ func (s *LabyrinthServer) Bombarda(stream pb.LabyrinthService_BombardaServer) er
     if s.player.Spells <= 0 {
         return errors.New("No spells remaining")
     }
+    log.Printf("Before Bombarda: ")
+    s.printLabyrinth()
 
     var requests []*pb.BombardaRequest
     for {
@@ -180,6 +183,7 @@ func (s *LabyrinthServer) Bombarda(stream pb.LabyrinthService_BombardaServer) er
         if startY < 0 {
             startY = 0
         }
+
         if endX >= len(s.labyrinth[0]) {
             endX = len(s.labyrinth[0]) - 1
         }
@@ -195,7 +199,29 @@ func (s *LabyrinthServer) Bombarda(stream pb.LabyrinthService_BombardaServer) er
     }
 
     s.player.Spells--
+
+    log.Printf("After Bombarda: ")
+    s.printLabyrinth()
+
     return stream.SendAndClose(&pb.EmptyMessage{})
+}
+
+func (s *LabyrinthServer) printLabyrinth() {
+    fmt.Println("Current Labyrinth State:")
+    for _, row := range s.labyrinth {
+        for _, tile := range row {
+            switch tile.Type {
+            case "EMPTY":
+                fmt.Print("EMPTY ")
+            case "WALL":
+                fmt.Print("WALL ")
+            default:
+                fmt.Print("COIN ")
+            }
+        }
+        fmt.Println()
+    }
+    fmt.Println()
 }
 
 func (s *PlayerServer) GetPlayerStatus(ctx context.Context, req *pb.EmptyMessage) (*pb.PlayerStatusResponse, error) {
