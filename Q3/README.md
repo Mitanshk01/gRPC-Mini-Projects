@@ -28,6 +28,7 @@ Course : Distributed Systems, Monsoon '24
 ├── 📄 go.mod
 ├── 📄 go.sum
 ├── 📄 Makefile
+├── 📄 Report.pdf
 ├── 📄 README.md
 ```
 
